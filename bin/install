@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+[ -n "$ASDF_INSTALL_VERSION" ] || (>&2 echo 'Missing ASDF_INSTALL_VERSION' && exit 1)
+[ -n "$ASDF_INSTALL_PATH" ] || (>&2 echo 'Missing ASDF_INSTALL_PATH' && exit 1)
+
+get_download_url () {
+  	local version=$1
+	echo "https://github.com/golang/protobuf/archive/v${version}.tar.gz"
+}
+
+my_mktemp () {
+	local tempdir=""
+	if [ "linux" = "$1" ] ; then
+		tempdir=$(mktemp -d asdf-golang.XXXX)
+	else
+		tempdir=$(mktemp -dt asdf-golang.XXXX)
+	fi
+	echo -n $tempdir
+}
+
+install () {
+	local install_type=$1
+  	local version=$2
+  	local install_path=$3
+	local tempdir=$(my_mktemp $platform)
+  	local download_url="$(get_download_url $version)"
+	local bin_install_path="${install_path}/bin"
+
+	(
+		mkdir -p $bin_install_path
+		curl -sSL $download_url -o "${tempdir}/archive.tar.gz"
+		tar -C "$tempdir" -zxf "${tempdir}/archive.tar.gz"
+
+		cd "${tempdir}/protobuf-${version}"
+		mkdir -p bin
+		go build -o ./bin/protoc-gen-go ./protoc-gen-go
+		mv ./bin/protoc-gen-go $bin_install_path/protoc-gen-go
+	)
+	
+	rm -rf $tempdir 
+}
+
+install $ASDF_INSTALL_TYPE $ASDF_INSTALL_VERSION $ASDF_INSTALL_PATH
