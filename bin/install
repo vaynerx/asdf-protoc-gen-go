@@ -29,6 +29,8 @@ install () {
   	local download_url="$(get_download_url $version)"
 	local bin_install_path="${install_path}/bin"
 
+	echo $download_url
+
 	(
 		mkdir -p $bin_install_path
 		curl -sSL $download_url -o "${tempdir}/archive.tar.gz"
