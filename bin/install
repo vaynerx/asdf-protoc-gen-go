@@ -36,7 +36,7 @@ install () {
     curl -sSL $download_url -o "${tempdir}/archive.tar.gz"
 
     tar -C "$tempdir" -zxf "${tempdir}/archive.tar.gz"
-    cd ${tempdir}/protobuf-${version}
+    cd ${tempdir}/protobuf-${version}/protoc-gen-go
 
     GO111MODULE=on\
     CGO_ENABLED=0 \
