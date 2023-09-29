@@ -7,51 +7,42 @@ set -o pipefail
 [ -n "$ASDF_INSTALL_PATH" ] || (>&2 echo 'Missing ASDF_INSTALL_PATH' && exit 1)
 
 get_download_url () {
-  local version=$1
-  echo "https://github.com/golang/protobuf/archive/v${version}.tar.gz"
+  local version="$ASDF_INSTALL_VERSION"
+  local os=$(go env GOOS)
+  local arch=$(go env GOARCH)
+  echo "https://github.com/protocolbuffers/protobuf-go/releases/download/v${version}/protoc-gen-go.v${version}.${os}.${arch}.tar.gz"
 }
 
-my_mktemp () {
-  local tempdir=""
-  if [ "linux" = "$1" ] ; then
-    tempdir=$(mktemp -d asdf-golang.XXXX)
-  else
-    tempdir=$(mktemp -dt asdf-golang.XXXX)
+install_protoc_gen_go () {
+  local version="$1"
+  local download_path="$2"
+  local install_path="$3"
+  created_tmp="0"
+  download_url=""
+
+  if [ -z "$download_path" ]; then
+    download_path=$(mktemp -dt asdf-golang.XXXX)
+    created_tmp="1"
   fi
-  echo -n $tempdir
+
+  download_url="$(get_download_url)"
+
+  # echo $download_url
+  # echo $download_path
+  # echo $install_path
+
+  mkdir -p "$download_path"
+  mkdir -p "$install_path/bin"
+
+  # download
+  curl -sSL $download_url -o "${download_path}/archive.tar.gz"
+  tar -C "$install_path/bin" -zxf "${download_path}/archive.tar.gz"
+  chmod +x "${install_path}/bin/protoc-gen-go"
+
+  if [ "1" = "$created_tmp" ]; then
+    echo "removing $download_path"
+    rm -r "$download_path"
+  fi
 }
 
-install () {
-  local install_type=$1
-  local version=$2
-  local install_path=$3
-  local tempdir=$(my_mktemp $platform)
-  local download_url="$(get_download_url $version)"
-  local bin_install_path="${install_path}/bin"
-  
-  echo $download_url
-  
-  (
-    mkdir -p "${bin_install_path}"
-    curl -sSL $download_url -o "${tempdir}/archive.tar.gz"
-
-    tar -C "$tempdir" -zxf "${tempdir}/archive.tar.gz"
-    cd ${tempdir}/protobuf-${version}/protoc-gen-go
-
-    GO111MODULE=on\
-    CGO_ENABLED=0 \
-    GOOS=$platform \
-    GOARCH=$arch \
-    go build \
-      -installsuffix 'static' \
-      -o protoc-gen-go .
-
-    mv protoc-gen-go $bin_install_path
-
-    chmod +x "${bin_install_path}/protoc-gen-go"
-  )
-  
-  rm -rf $tempdir
-}
-
-install $ASDF_INSTALL_TYPE $ASDF_INSTALL_VERSION $ASDF_INSTALL_PATH
+install_protoc_gen_go "$ASDF_INSTALL_VERSION" "${ASDF_DOWNLOAD_PATH:-}" "$ASDF_INSTALL_PATH"
